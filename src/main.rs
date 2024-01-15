@@ -21,11 +21,11 @@ fn usage_helper() -> ! {
 }
 
 fn generate(
-    transformer: Transformer,
-    tokenizer: Tokenizer,
-    sampler: Sampler,
-    prompt: &[u8],
-    steps: i32,
+    transformer: &mut Transformer,
+    tokenizer: &Tokenizer,
+    sampler: &mut Sampler,
+    prompt: &str,
+    steps: u32,
 ) {
     let num_prompt_tokens = 0;
     // +3 for '\0', ?BOS, ?EOS
@@ -85,9 +85,10 @@ fn main() {
         tokenizer_path: String,
         temperature: f32,
         topp: f32,
-        steps: usize,
+        steps: u32,
         rng_seed: u64,
         prompt: String,
+        mode: String,
     }
 
     let mut args = Args {
@@ -98,6 +99,7 @@ fn main() {
         steps: 256,
         rng_seed: 0,
         prompt: String::from(""),
+        mode: String::from("generate"),
     };
 
     loop {
@@ -127,31 +129,34 @@ fn main() {
 
     info!("checkpoint_path: {}", args.checkpoint_path);
 
-    let transformer = Transformer::new(args.checkpoint_path);
+    let mut transformer = Transformer::new(args.checkpoint_path);
 
-    if args.steps == 0 || args.steps > transformer.config.seq_len as usize {
-        args.steps = transformer.config.seq_len as usize;
+    if args.steps == 0 || args.steps > transformer.config.seq_len {
+        args.steps = transformer.config.seq_len;
     }
     debug!("steps: {}", args.steps);
 
     // build the Tokenizer via the model .bin file.
     let tokenizer = Tokenizer::new(args.tokenizer_path, transformer.config.vocab_size as usize);
+    let mut sampler = Sampler::new(
+        transformer.config.vocab_size,
+        args.temperature,
+        args.topp,
+        args.rng_seed,
+    );
 
-    // let sampler = Sampler::new(transformer.config.vocab_size, temperature, topp, rng_seed);
-
-    // if mode == "generate" {
-    //     generate(transformer, tokenizer, sampler, prompt, steps);
-    // } else if mode == "chat" {
-    //     chat(
-    //         transformer,
-    //         tokenizer,
-    //         sampler,
-    //         prompt,
-    //         system_prompt,
-    //         steps,
-    //     );
-    // } else {
-    //     println!("mode not supported");
-    //     usage_helper();
-    // }
+    if args.mode == "generate" {
+        generate(
+            &mut transformer,
+            &tokenizer,
+            &mut sampler,
+            &args.prompt,
+            args.steps,
+        );
+    } else if args.mode == "chat" {
+        todo!()
+    } else {
+        println!("mode not supported");
+        usage_helper();
+    }
 }

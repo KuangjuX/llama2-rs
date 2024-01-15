@@ -12,19 +12,19 @@ use log::{debug, info};
 #[derive(Debug, Default)]
 pub struct TransformerConfig {
     /// transformer dimension
-    pub dim: i32,
+    pub dim: u32,
     /// for ffn layers
-    pub hidden_dim: i32,
+    pub hidden_dim: u32,
     /// number of layers
-    pub num_layers: i32,
+    pub num_layers: u32,
     /// number of query heads
-    pub num_heads: i32,
+    pub num_heads: u32,
     /// number of key/value heads (can be < query heads because of multiquery)
-    pub num_kv_heads: i32,
+    pub num_kv_heads: u32,
     /// vovabulary size, usually 256
-    pub vocab_size: i32,
+    pub vocab_size: u32,
     /// max sequence length
-    pub seq_len: i32,
+    pub seq_len: u32,
 }
 
 /// Transformer weights
@@ -173,7 +173,7 @@ impl Transformer {
 
         // negative vocab size is hacky way of signaling unshared weights. bit yikes.
         let shared_weights = transformer.config.vocab_size > 0;
-        transformer.config.vocab_size = transformer.config.vocab_size.abs();
+        // transformer.config.vocab_size = transformer.config.vocab_size.abs();
         // figure out the file size
         transformer.file_size = file.seek(std::io::SeekFrom::End(0)).unwrap() as usize;
         debug!("file size: {:#x}", transformer.file_size);
