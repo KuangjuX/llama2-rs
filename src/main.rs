@@ -3,11 +3,12 @@
 
 use std::{env, process::exit};
 
-use log::{info, log_enabled};
+use log::{debug, info};
 use sampler::Sampler;
 use tokenizer::Tokenizer;
 use transformer::Transformer;
 
+mod kernels;
 mod sampler;
 mod tokenizer;
 mod transformer;
@@ -26,7 +27,30 @@ fn generate(
     prompt: &[u8],
     steps: i32,
 ) {
-    todo!()
+    let num_prompt_tokens = 0;
+    // +3 for '\0', ?BOS, ?EOS
+    let prompt_tokens = vec![0i32; prompt.len() + 3];
+
+    // TODO: encode
+    if num_prompt_tokens < 1 {
+        panic!("Something is wrong, expected at least 1 prompt token");
+    }
+
+    // start the main loop.
+    // used to time our code, only initialized after first iteration.
+    let mut start = 0;
+    // will store the next token in the sequence
+    let mut next = 0;
+    // kick off with the first token in the prompt.
+    let mut roken = prompt_tokens[0];
+    // position in the sequence
+    let mut pos = 0;
+
+    loop {
+        if pos >= steps {
+            break;
+        }
+    }
 }
 
 fn chat(
@@ -40,41 +64,78 @@ fn chat(
     todo!()
 }
 
+const USAGE_HELP: &str = "\
+Usage: cargo run <checkpoint> [OPTIONS]
+Options:
+     --tokenizer-path <string>
+     --temperature <float>
+     --top-p <float>
+     --steps <int>
+     --prompt <string>
+     --rng-seed <int>
+";
+
 fn main() {
     env_logger::init();
-    let argv = env::args().collect::<Vec<String>>();
-    let argc = argv.len();
+    let mut argv = env::args();
+    argv.next().unwrap();
 
-    let mut steps = 0;
-    let mut tokenizer_path = String::from("tokenizer.bin");
-    let mut temperature = 1.0;
-    let mut topp = 0.9;
-    let mut steps = 256;
-    let mut rng_seed = 0;
-    let mut mode = "generate";
-    let mut prompt = b"";
-    let mut system_prompt = b"";
-    let checkpoint_path = if argc >= 2 {
-        argv[1].clone()
-    } else {
-        usage_helper()
+    struct Args {
+        checkpoint_path: String,
+        tokenizer_path: String,
+        temperature: f32,
+        topp: f32,
+        steps: usize,
+        rng_seed: u64,
+        prompt: String,
+    }
+
+    let mut args = Args {
+        checkpoint_path: argv.next().expect(USAGE_HELP),
+        tokenizer_path: String::from("tokenizer.bin"),
+        temperature: 1.0,
+        topp: 0.9,
+        steps: 256,
+        rng_seed: 0,
+        prompt: String::from(""),
     };
-    info!("checkpoint_path: {}", checkpoint_path);
 
-    for arg in argv.iter().skip(2) {
-        if arg.chars().nth(0).unwrap() != '-' {
-            usage_helper()
+    loop {
+        match argv.next() {
+            Some(s) if s == "--tokenizer-path" => {
+                args.tokenizer_path = argv.next().map(String::from).expect(USAGE_HELP);
+            }
+            Some(s) if s == "--temperature" => {
+                args.temperature = argv.next().expect(USAGE_HELP).parse().unwrap();
+            }
+            Some(s) if s == "--top-p" => {
+                args.topp = argv.next().expect(USAGE_HELP).parse().unwrap();
+            }
+            Some(s) if s == "--steps" => {
+                args.steps = argv.next().expect(USAGE_HELP).parse().unwrap();
+            }
+            Some(s) if s == "--prompt" => {
+                args.prompt = argv.next().expect(USAGE_HELP);
+            }
+            Some(s) if s == "--rng-seed" => {
+                args.rng_seed = argv.next().expect(USAGE_HELP).parse().unwrap();
+            }
+            None => break,
+            _ => panic!("{USAGE_HELP}"),
         }
     }
 
-    let transformer = Transformer::new(checkpoint_path);
+    info!("checkpoint_path: {}", args.checkpoint_path);
 
-    // if steps == 0 || steps > transformer.config.seq_len {
-    //     steps = transformer.config.seq_len;
-    // }
+    let transformer = Transformer::new(args.checkpoint_path);
 
-    // // build the Tokenizer via the model .bin file.
-    // let tokenizer = Tokenizer::new(tokenizer_path, transformer.config.vocab_size);
+    if args.steps == 0 || args.steps > transformer.config.seq_len as usize {
+        args.steps = transformer.config.seq_len as usize;
+    }
+    debug!("steps: {}", args.steps);
+
+    // build the Tokenizer via the model .bin file.
+    let tokenizer = Tokenizer::new(args.tokenizer_path, transformer.config.vocab_size as usize);
 
     // let sampler = Sampler::new(transformer.config.vocab_size, temperature, topp, rng_seed);
 

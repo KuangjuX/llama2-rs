@@ -4,7 +4,7 @@ use std::mem::size_of;
 use std::os::fd::AsRawFd;
 use std::ptr::{self, NonNull};
 
-use libc::{mmap, stat};
+use libc::mmap;
 use log::{debug, info};
 
 /// Transformer configuration
